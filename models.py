@@ -168,12 +168,12 @@ def Generative(input):
 
     return net
 
-def Generative2(input):
+def Generative2(input, name, reuse=False):
     '''
     :param input:
     :return:
     '''
-    with tf.variable_scope('Generative'):
+    with tf.variable_scope('Generative_' + name, reuse=reuse):
         with tf.variable_scope('conv_1'):
             net = tf.pad(input, [[0, 0], [3, 3], [3, 3], [0, 0]], 'REFLECT')
             net = conv(net, 64, [7, 7], padding='VALID')
