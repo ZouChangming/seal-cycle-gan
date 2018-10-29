@@ -135,6 +135,31 @@ def Classifier(input, reuse=False):
 
     return feature, net
 
+def Classifier2(input, reuse=False):
+    '''
+    :param input:
+    :param reuse:
+    :return:
+    '''
+    with tf.variable_scope('Classifier', reuse=reuse):
+        with tf.variable_scope('conv_1'):
+            net = slim.conv2d(input, 64, kernel_size=[4, 4], stride=2, padding='SAME', activation_fn=None)
+            net = Leaky_Relu(net)
+
+        with tf.variable_scope('conv_2'):
+            net = conv(net, 128, [4, 4], stride=2, activation='Leaky_Relu')
+
+        with tf.variable_scope('conv_3'):
+            net = conv(net, 256, [4, 4], stride=2, activation='Leaky_Relu')
+
+        with tf.variable_scope('conv_4'):
+            net = conv(net, 512, [4, 4], stride=2, activation='Leaky_Relu')
+
+        with tf.variable_scope('conv_5'):
+            net = slim.conv2d(net, 1, kernel_size=[4, 4], stride=1, padding='SAME', activation_fn=None)
+
+    return net
+
 def Generative(input):
     '''
     :param input: a vector with 256 dimensions

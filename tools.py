@@ -42,7 +42,10 @@ def get_loss_GC(logits_real_noseal, logits_fake_noseal):
     return 0.5*tf.reduce_sum(tf.square(vector_real - vector_fake))
 
 def get_loss_G(seal, fake):
-    return 0.5*tf.reduce_mean(tf.abs(seal - fake))
+    return tf.reduce_mean(tf.abs(seal - fake))
+
+def get_LS_loss(feature1, feature2):
+    return tf.reduce_mean(tf.square(feature1-feature2))
 
 def get_loss_KL(z):
     avg = tf.reduce_mean(z, 1)
