@@ -47,10 +47,8 @@ def get_loss_G(seal, fake):
 def get_LS_loss(feature1, feature2):
     return tf.reduce_mean(tf.square(feature1-feature2))
 
-def get_loss_KL(z):
-    avg = tf.reduce_mean(z, 1)
-    cov = get_covariance(z)
-    return 0.5*(tf.reduce_sum(tf.multiply(cov, cov) + tf.exp(avg) - avg - 1))
+def get_loss_KL(z_mean, z_stddev):
+    return tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(z_mean) + tf.square(z_stddev) - tf.log(tf.square(z_stddev)) - 1,1))
 
 def get_covariance(vector):
     mean = tf.reduce_mean(vector, 1)

@@ -2,7 +2,7 @@
 
 import os
 import tensorflow as tf
-from models import Generative, Discriminative, Encoder, Classifier, Generative2, Discriminative2, Classifier2
+from models import Generative, Discriminative, Encoder2, Classifier, Generative2, Discriminative2, Classifier2
 import tools
 
 learning_rate = 0.00002
@@ -19,10 +19,17 @@ def train():
     global_step = tf.Variable(0)
 
     # z = Encoder(seal)
-    fake_noseal = Generative2(seal, 'seal2noseal')
-    fake_seal = Generative2(noseal, 'noseal2seal')
-    fake_noseal2seal = Generative2(fake_noseal, 'noseal2seal', reuse=True)
-    fake_seal2noseal = Generative2(fake_seal, 'seal2noseal', reuse=True)
+    z_seal_mean, z_seal_stddev, z_seal = Encoder2(seal, batch_size / 2, 256, name='seal2noseal')
+    z_noseal_mean, z_noseal_stddev, z_noseal = Encoder2(noseal, batch_size / 2, 256, name='noseal2seal')
+
+    fake_noseal = Generative(z_seal, 256, 'seal2noseal')
+    fake_seal = Generative(z_noseal, 256, 'noseal2seal')
+
+    z_fake_seal_mean, z_fake_seal_stddev, z_fake_seal = Encoder2(fake_seal, batch_size/2, 256, name='seal2noseal', reuse=True)
+    z_fake_noseal_mean, z_fake_noseal_stddev, z_fake_noseal = Encoder2(fake_noseal, batch_size/2, 256, name='noseal2seal', reuse=True)
+
+    fake_noseal2seal = Generative(z_fake_noseal, 256, 'noseal2seal', reuse=True)
+    fake_seal2noseal = Generative(z_fake_seal, 256, 'seal2noseal', reuse=True)
 
     D_logits_fake_noseal = Discriminative(fake_noseal)
     D_logits_fake_seal = Discriminative(fake_seal, reuse=True)
@@ -53,7 +60,10 @@ def train():
 
     loss_G = tools.get_loss_G(seal, fake_noseal2seal) + tools.get_loss_G(noseal, fake_seal2noseal)
 
-    # loss_KL = tools.get_loss_KL(z)
+    loss_KL_seal2noseal = 0.1*(tools.get_loss_KL(z_seal_mean, z_seal_stddev) +\
+                          tools.get_loss_KL(z_fake_seal_mean, z_fake_seal_stddev))
+    loss_KL_noseal2seal = 0.1*(tools.get_loss_KL(z_noseal_mean, z_noseal_stddev) +\
+                          tools.get_loss_KL(z_fake_noseal_mean, z_fake_noseal_stddev))
 
     all_var = tf.trainable_variables()
 
@@ -63,9 +73,15 @@ def train():
 
     var_G = [var for var in all_var if var.name.startswith('Generative')]
 
+    var_E = [var for var in all_var if var.name.startswith('Encoder')]
+
     var_G_seal2noseal = [var for var in all_var if var.name.startswith('Generative_seal2noseal')]
 
     var_G_noseal2seal = [var for var in all_var if var.name.startswith('Generative_noseal2seal')]
+
+    var_E_seal2noseal = [var for var in all_var if var.name.startswith('Encoder_seal2noseal')]
+
+    var_E_noseal2seal = [var for var in all_var if var.name.startswith('Encoder_noseal2seal')]
 
     var_D = [var for var in all_var if var.name.startswith('Discriminative')]
 
@@ -81,7 +97,11 @@ def train():
 
     opt_G_noseal2seal = optimizer.minimize(loss_GC_noseal2seal + loss_GD_noseal2seal, var_list=var_G_noseal2seal)
 
-    opt_G = optimizer.minimize(20*loss_G, var_list=var_G)
+    opt_E_seal2noseal = optimizer.minimize(loss_KL_seal2noseal + loss_GC_seal2noseal + loss_GD_seal2noseal, var_list=var_E_seal2noseal)
+
+    opt_E_noseal2seal = optimizer.minimize(loss_KL_noseal2seal + loss_GC_noseal2seal + loss_GD_noseal2seal, var_list=var_E_noseal2seal)
+
+    opt_G = optimizer.minimize(20*loss_G, var_list=var_G+var_E)
 
     opt_D = optimizer.minimize(loss_D, var_list=var_D)
 
@@ -104,6 +124,10 @@ def train():
                 seal_img, seal_labels = tools.get_seal_set(batch_size/2, i*iter+j)
                 noseal_img, noseal_labels = tools.get_noseal_set(batch_size/2, i*iter+j)
                 # sess.run(opt_E, feed_dict={seal:seal_img})
+                sess.run(opt_E_seal2noseal, feed_dict={seal: seal_img, seal_label: seal_labels, noseal: noseal_img,
+                                                       noseal_label: noseal_labels})
+                sess.run(opt_E_noseal2seal, feed_dict={seal: seal_img, seal_label: seal_labels, noseal: noseal_img,
+                                                       noseal_label: noseal_labels})
                 sess.run(opt_G, feed_dict={seal:seal_img, seal_label:seal_labels, noseal:noseal_img,
                                            noseal_label:noseal_labels})
                 sess.run(opt_D, feed_dict={seal:seal_img, seal_label:seal_labels, noseal:noseal_img,
@@ -117,13 +141,16 @@ def train():
             # tmp = sess.run(logits_fake, feed_dict={seal:seal_img, seal_label:seal_labels,
             #                                         noseal:noseal_img,noseal_label:noseal_labels})
             # print tmp
-            l_c, l_g, l_c1, l_c2, l_d1, l_d2, l_d, a, l = sess.run([loss_C, loss_G, loss_GC_seal2noseal, loss_GC_noseal2seal,
+            l_k1, l_k2, l_c, l_g, l_c1, l_c2, l_d1, l_d2, l_d, a, l = sess.run([loss_KL_seal2noseal, loss_KL_noseal2seal,
+                                                                                loss_C, loss_G, loss_GC_seal2noseal,
+                                                                                loss_GC_noseal2seal,
                                                         loss_GD_seal2noseal, loss_GD_noseal2seal, loss_D, accuracy, lr],
                                                           feed_dict={seal:seal_img, seal_label:seal_labels,
                                                                      noseal:noseal_img,noseal_label:noseal_labels})
-            print 'Epoch ' + str(i) + ':L_C=' + str(l_c) + ';L_G=' + str(l_g) + ';L_C_s2n=' + str(l_c1) +  ';L_C_n2s=' +\
-                  str(l_c2) + ';L_D_s2n=' + str(l_d1) + ';L_D_n2s=' + str(l_d2) + ';L_D=' + str(l_d) + ';acc=' + str(a) +\
-                  ';lr=' + str(l)
+            print 'Epoch ' + str(i) + ' : L_K_s2n = ' + str(l_k1) + ' ; L_K_n2s = ' + str(l_k2) + ' ; L_C = ' +\
+                  str(l_c) + ' ; L_G = ' + str(l_g) + ' ; L_C_s2n = ' + str(l_c1) +  ' ; L_C_n2s = ' + str(l_c2) + \
+                  ' ;\n          L_D_s2n = ' + str(l_d1) + ' ; L_D_n2s = ' + str(l_d2) + ' ; L_D = ' + str(l_d) +\
+                  ' ; acc = ' + str(a) + ' ; lr = ' + str(l)
             if i % 10 == 0:
                 saver.save(sess, os.path.join(model_path, 'model.ckpt'))
                 seal_img = tools.get_test()

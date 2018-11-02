@@ -3,6 +3,7 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.layers as layers
+from inception_resnet_v2 import inception_resnet_v2
 
 def Leaky_Relu(x):
     return tf.maximum(x, 0.2*x)
@@ -88,6 +89,51 @@ def Encoder(input):
 
     return net
 
+def Encoder2(input, batch_size, dim, name, reuse=False):
+    '''
+    :param input:
+    :return:
+    '''
+    with tf.variable_scope('Encoder_'+name, reuse=reuse):
+        # with tf.variable_scope('conv_1'):
+        #     net = conv(input, 64, [3, 3], keep_prob=0.8)
+        #     net = slim.max_pool2d(net, kernel_size=[2, 2], stride=2)
+        #
+        # with tf.variable_scope('conv_2'):
+        #     net = conv(net, 128, [3, 3], keep_prob=0.8)
+        #     net = slim.max_pool2d(net, kernel_size=[2, 2], stride=2)
+        #
+        # with tf.variable_scope('conv_3'):
+        #     net = conv(net, 256, [3, 3], keep_prob=0.8)
+        #     net = slim.max_pool2d(net, kernel_size=[2, 2], stride=2)
+        #
+        # with tf.variable_scope('conv_4'):
+        #     net = conv(net, 512, [3, 3], keep_prob=0.8)
+        #     net = slim.max_pool2d(net, kernel_size=[2, 2], stride=2)
+        #
+        # with tf.variable_scope('conv_5'):
+        #     net = conv(net, 512, [3, 3], keep_prob=0.8)
+        #     net = slim.max_pool2d(net, kernel_size=[2, 2], stride=2)
+        #
+        # with tf.variable_scope('FC_1'):
+        #     net = slim.flatten(net)
+        #     net = slim.fully_connected(net, 4096, activation_fn=None)
+        #     net = layers.batch_norm(net, is_training=False, trainable=False)
+        #     net = tf.nn.relu(net)
+        #     net = tf.nn.dropout(net, 0.5)
+        #
+        # with tf.variable_scope('FC_2'):
+        #     net = slim.fully_connected(net, dim*2, activation_fn=None)
+        net, _ = inception_resnet_v2(input, bottleneck_layer_size=dim*2, reuse=reuse)
+
+        mean = net[:, :dim]
+        logvar = net[:, dim:]
+        stddev = tf.sqrt(tf.exp(logvar))
+        eps = tf.random_normal([batch_size, dim], 0, 1, tf.float32)
+        z = mean + stddev * eps
+
+        return mean, stddev, z
+
 def Classifier(input, reuse=False):
     '''
     :param input: images with 224*224*3 size
@@ -160,18 +206,18 @@ def Classifier2(input, reuse=False):
 
     return net
 
-def Generative(input):
+def Generative(input, dim, name, reuse=False):
     '''
     :param input: a vector with 256 dimensions
     :return: images with 224*224*3 size
     '''
-    with tf.variable_scope('Generative'):
+    with tf.variable_scope('Generative_'+name, reuse=reuse):
         with tf.variable_scope('reshape'):
-            net = slim.fully_connected(input, 7*7*256, activation_fn=None)
+            net = slim.fully_connected(input, 7*7*dim, activation_fn=None)
             net = layers.batch_norm(net, is_training=False, trainable=False)
             net = tf.nn.relu(net)
             net = tf.nn.dropout(net, 0.5)
-            net = tf.reshape(net, [-1, 7, 7, 256])
+            net = tf.reshape(net, [-1, 7, 7, dim])
 
         with tf.variable_scope('conv_1'):
             net = deconv(net, 256, [3, 3])
@@ -181,6 +227,18 @@ def Generative(input):
 
         with tf.variable_scope('conv_3'):
             net = deconv(net, 128, [5, 5])
+
+        with tf.variable_scope('refine'):
+            with tf.variable_scope('res_block_1'):
+                net = residule_block(net, 128)
+            with tf.variable_scope('res_block_2'):
+                net = residule_block(net, 128)
+            with tf.variable_scope('res_block_3'):
+                net = residule_block(net, 128)
+            with tf.variable_scope('res_block_4'):
+                net = residule_block(net, 128)
+            with tf.variable_scope('res_block_5'):
+                net = residule_block(net, 128)
 
         with tf.variable_scope('conv_4'):
             net = deconv(net, 92, [5, 5])
