@@ -92,15 +92,23 @@ def get_test():
     img_list = os.listdir(path)
     id = random.randint(0, len(img_list)-1)
     img = cv2.imread(os.path.join(path, img_list[id]))
+    h, w, _ = np.shape(img)
     img = cv2.resize(img, (224, 224))
     image[0, :, :, :] = img / 255.0 * 2 - 1.0
-    return image
+    return image, h, w
 
-def save(image, epoch):
+def save(ori_img, image, epoch, h, w):
+    img = np.zeros(shape=(h, 2*w, 3), dtype=np.float32)
     image = np.reshape(image, [224, 224, 3])
     image = (image + 1.0) / 2.0 * 255.0
+    image = cv2.resize(image, (w, h))
+    ori_img = np.reshape(ori_img, [224, 224, 3])
+    ori_img = (ori_img + 1.0) / 2.0 * 255.0
+    ori_img = cv2.resize(ori_img, (w, h))
+    img[:, 0:w, :] = ori_img
+    img[:, w:2*w, :] = image
     path = './data/sample/' + str(epoch) + '.jpg'
-    cv2.imwrite(path, image)
+    cv2.imwrite(path, img)
 
 def check_source():
     path = './data/source/noseal'

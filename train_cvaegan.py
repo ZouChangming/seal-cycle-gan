@@ -5,10 +5,10 @@ import tensorflow as tf
 from models import Generative, Discriminative, Encoder, Classifier, Generative2, Discriminative2, Classifier2
 import tools
 
-learning_rate = 0.00002
-batch_size = 4
+learning_rate = 0.00001
+batch_size = 8
 model_path = './data/model/GAN'
-epoch = 10000
+epoch = 20000
 iter = 10
 
 def train():
@@ -69,7 +69,7 @@ def train():
 
     var_D = [var for var in all_var if var.name.startswith('Discriminative')]
 
-    lr = tf.train.exponential_decay(learning_rate=learning_rate, global_step=global_step, decay_rate=0.5,
+    lr = tf.train.exponential_decay(learning_rate=learning_rate, global_step=global_step, decay_rate=0.8,
                                     decay_steps=10000, staircase=True)
 
     optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta1=0.5)
@@ -77,13 +77,13 @@ def train():
     opt_C = optimizer.minimize(loss_C, var_list=var_C, global_step=global_step)
 
     # opt_E = optimizer.minimize(3*loss_KL + loss_G, var_list=var_E)
-    opt_G_seal2noseal = optimizer.minimize(loss_GC_seal2noseal + loss_GD_seal2noseal, var_list=var_G_seal2noseal)
+    opt_G_seal2noseal = optimizer.minimize(loss_GC_seal2noseal + 10*loss_GD_seal2noseal, var_list=var_G_seal2noseal)
 
-    opt_G_noseal2seal = optimizer.minimize(loss_GC_noseal2seal + loss_GD_noseal2seal, var_list=var_G_noseal2seal)
+    opt_G_noseal2seal = optimizer.minimize(loss_GC_noseal2seal + 10*loss_GD_noseal2seal, var_list=var_G_noseal2seal)
 
-    opt_G = optimizer.minimize(20*loss_G, var_list=var_G)
+    opt_G = optimizer.minimize(25*loss_G, var_list=var_G)
 
-    opt_D = optimizer.minimize(loss_D, var_list=var_D)
+    opt_D = optimizer.minimize(10*loss_D, var_list=var_D)
 
     accuracy = 0.5*(tf.reduce_mean(tf.cast(tf.less(tf.reduce_mean(C_logits_real_seal, [1, 2, 3]), 0.5), tf.float32))+ \
                     tf.reduce_mean(tf.cast(tf.greater_equal(tf.reduce_mean(C_logits_real_noseal, [1, 2, 3]), 0.5), tf.float32)))
@@ -126,9 +126,9 @@ def train():
                   ';lr=' + str(l)
             if i % 10 == 0:
                 saver.save(sess, os.path.join(model_path, 'model.ckpt'))
-                seal_img = tools.get_test()
+                seal_img, h, w = tools.get_test()
                 fake_img = sess.run(fake_noseal, feed_dict={seal:seal_img})
-                tools.save(fake_img[0, :, : ,:], i)
+                tools.save(seal_img, fake_img[0, :, : ,:], i, h, w)
 
 if __name__ == '__main__':
     train()

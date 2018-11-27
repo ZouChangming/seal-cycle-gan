@@ -204,9 +204,11 @@ def Generative2(input, name, reuse=False):
             net = conv(net, 64, [7, 7], padding='VALID')
 
         with tf.variable_scope('conv_2'):
+            net_1 = net
             net = conv(net, 128, [3, 3], stride=2)
 
         with tf.variable_scope('conv_3'):
+            net_2 = net
             net = conv(net, 256, [3, 3], stride=2)
 
         with tf.variable_scope('refine'):
@@ -231,9 +233,11 @@ def Generative2(input, name, reuse=False):
 
         with tf.variable_scope('deconv_1'):
             net = deconv(net, 128, [3, 3])
+            net = net + net_2
 
         with tf.variable_scope('deconv_2'):
             net = deconv(net, 64, [3, 3])
+            net = net + net_1
 
         with tf.variable_scope('conv_4'):
             net = tf.pad(net, [[0, 0], [3, 3], [3, 3], [0, 0]], 'REFLECT')
