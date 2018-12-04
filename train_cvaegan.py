@@ -5,7 +5,7 @@ import tensorflow as tf
 from models import Generative, Discriminative, Encoder, Classifier, Generative2, Discriminative2, Classifier2
 import tools
 
-learning_rate = 0.00001
+learning_rate = 0.00002
 batch_size = 8
 model_path = './data/model/GAN'
 epoch = 20000
@@ -24,34 +24,43 @@ def train():
     fake_noseal2seal = Generative2(fake_noseal, 'noseal2seal', reuse=True)
     fake_seal2noseal = Generative2(fake_seal, 'seal2noseal', reuse=True)
 
-    D_logits_fake_noseal = Discriminative(fake_noseal)
-    D_logits_fake_seal = Discriminative(fake_seal, reuse=True)
-    D_logits_real_seal = Discriminative(seal, reuse=True)
-    D_logits_real_noseal = Discriminative(noseal, reuse=True)
+    D_logits_fake_noseal = Discriminative2(fake_noseal)
+    D_logits_fake_seal = Discriminative2(fake_seal, reuse=True)
+    D_logits_real_seal = Discriminative2(seal, reuse=True)
+    D_logits_real_noseal = Discriminative2(noseal, reuse=True)
+    D_logits_noseal2seal = Discriminative2(fake_noseal2seal, reuse=True)
+    D_logits_seal2noseal = Discriminative2(fake_seal2noseal, reuse=True)
 
     C_logits_fake_noseal = Classifier2(fake_noseal)
     C_logits_fake_seal = Classifier2(fake_seal, reuse=True)
     C_logits_real_noseal = Classifier2(noseal, reuse=True)
     C_logits_real_seal = Classifier2(seal, reuse=True)
+    C_logits_noseal2seal = Classifier2(fake_noseal2seal, reuse=True)
+    C_logits_seal2noseal = Classifier2(fake_seal2noseal, reuse=True)
 
     loss_D = tf.reduce_mean(tools.get_LS_loss(tf.zeros_like(D_logits_real_seal), D_logits_real_seal) + \
-            tools.get_LS_loss(tf.ones_like(D_logits_real_noseal), D_logits_real_noseal) + \
-            tools.get_LS_loss(tf.zeros_like(D_logits_fake_noseal), D_logits_fake_noseal)  +\
+            tools.get_LS_loss(tf.zeros_like(D_logits_real_noseal), D_logits_real_noseal) + \
+            tools.get_LS_loss(tf.ones_like(D_logits_fake_noseal), D_logits_fake_noseal)  +\
             tools.get_LS_loss(tf.ones_like(D_logits_fake_seal), D_logits_fake_seal))
+            # 0.1*tools.get_LS_loss(tf.ones_like(D_logits_seal2noseal), D_logits_seal2noseal) +\
+            # 0.1*tools.get_LS_loss(tf.ones_like(D_logits_noseal2seal), D_logits_noseal2seal)
 
     loss_C = tf.reduce_mean(tools.get_LS_loss(tf.zeros_like(C_logits_real_seal), C_logits_real_seal) + \
                 tools.get_LS_loss(tf.ones_like(C_logits_real_noseal), C_logits_real_noseal) +\
                 tools.get_LS_loss(tf.zeros_like(C_logits_fake_noseal), C_logits_fake_noseal) +\
                 tools.get_LS_loss(tf.ones_like(C_logits_fake_seal), C_logits_fake_seal))
+                # 0.1*tools.get_LS_loss(tf.zeros_like(C_logits_seal2noseal), C_logits_seal2noseal) +\
+                # 0.1*tools.get_LS_loss(tf.ones_like(C_logits_noseal2seal), C_logits_noseal2seal)
 
-    loss_GD_seal2noseal = tools.get_LS_loss(tf.ones_like(D_logits_fake_noseal), D_logits_fake_noseal)
+    loss_GD_seal2noseal = tools.get_LS_loss(tf.zeros_like(D_logits_fake_noseal), D_logits_fake_noseal)
     loss_GD_noseal2seal = tools.get_LS_loss(tf.zeros_like(D_logits_fake_seal), D_logits_fake_seal)
 
     loss_GC_seal2noseal = tools.get_LS_loss(tf.ones_like(C_logits_fake_noseal), C_logits_fake_noseal)
 
     loss_GC_noseal2seal = tools.get_LS_loss(tf.zeros_like(C_logits_fake_seal), C_logits_fake_seal)
 
-    loss_G = tools.get_loss_G(seal, fake_noseal2seal) + tools.get_loss_G(noseal, fake_seal2noseal)
+    loss_G = tools.get_loss_G(seal, fake_noseal2seal) + tools.get_loss_G(noseal, fake_seal2noseal) +\
+             0.1*tools.get_loss_G(seal, fake_seal2noseal) + 0.1*tools.get_loss_G(noseal, fake_noseal2seal)
 
     # loss_KL = tools.get_loss_KL(z)
 
@@ -77,13 +86,13 @@ def train():
     opt_C = optimizer.minimize(loss_C, var_list=var_C, global_step=global_step)
 
     # opt_E = optimizer.minimize(3*loss_KL + loss_G, var_list=var_E)
-    opt_G_seal2noseal = optimizer.minimize(loss_GC_seal2noseal + 10*loss_GD_seal2noseal, var_list=var_G_seal2noseal)
+    opt_G_seal2noseal = optimizer.minimize(loss_GC_seal2noseal + loss_GD_seal2noseal, var_list=var_G_seal2noseal)
 
-    opt_G_noseal2seal = optimizer.minimize(loss_GC_noseal2seal + 10*loss_GD_noseal2seal, var_list=var_G_noseal2seal)
+    opt_G_noseal2seal = optimizer.minimize(loss_GC_noseal2seal + loss_GD_noseal2seal, var_list=var_G_noseal2seal)
 
-    opt_G = optimizer.minimize(25*loss_G, var_list=var_G)
+    opt_G = optimizer.minimize(30*loss_G, var_list=var_G)
 
-    opt_D = optimizer.minimize(10*loss_D, var_list=var_D)
+    opt_D = optimizer.minimize(loss_D, var_list=var_D)
 
     accuracy = 0.5*(tf.reduce_mean(tf.cast(tf.less(tf.reduce_mean(C_logits_real_seal, [1, 2, 3]), 0.5), tf.float32))+ \
                     tf.reduce_mean(tf.cast(tf.greater_equal(tf.reduce_mean(C_logits_real_noseal, [1, 2, 3]), 0.5), tf.float32)))

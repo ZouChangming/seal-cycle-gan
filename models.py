@@ -153,9 +153,12 @@ def Classifier2(input, reuse=False):
             net = conv(net, 256, [4, 4], stride=2, activation='Leaky_Relu')
 
         with tf.variable_scope('conv_4'):
-            net = conv(net, 512, [4, 4], stride=2, activation='Leaky_Relu')
+            net = conv(net, 256, [4, 4], stride=2, activation='Leaky_Relu')
 
         with tf.variable_scope('conv_5'):
+            net = conv(net, 512, [4, 4], stride=1, activation='Leaky_Relu')
+
+        with tf.variable_scope('conv_6'):
             net = slim.conv2d(net, 1, kernel_size=[4, 4], stride=1, padding='SAME', activation_fn=None)
 
     return net
@@ -230,16 +233,20 @@ def Generative2(input, name, reuse=False):
                 net = residule_block(net, 256)
             with tf.variable_scope('res_block_9'):
                 net = residule_block(net, 256)
+            with tf.variable_scope('res_block_10'):
+                net = residule_block(net, 256)
+            with tf.variable_scope('res_block_11'):
+                net = residule_block(net, 256)
 
         with tf.variable_scope('deconv_1'):
             net = deconv(net, 128, [3, 3])
-            net = net + net_2
+            net = tf.concat([net, net_2], 3)
 
         with tf.variable_scope('deconv_2'):
             net = deconv(net, 64, [3, 3])
-            net = net + net_1
+            net = tf.concat([net, net_1], 3)
 
-        with tf.variable_scope('conv_4'):
+        with tf.variable_scope('conv_5'):
             net = tf.pad(net, [[0, 0], [3, 3], [3, 3], [0, 0]], 'REFLECT')
             net = slim.conv2d(net, 3, kernel_size=[7, 7], stride=1, padding='VALID', activation_fn=tf.nn.tanh)
 
@@ -287,15 +294,12 @@ def Discriminative2(input, reuse=False):
             net = conv(net, 256, [4, 4], stride=2, activation='Leaky_Relu')
 
         with tf.variable_scope('conv_4'):
-            net = conv(net, 512, [4, 4], stride=2, activation='Leaky_Relu')
+            net = conv(net, 256, [4, 4], stride=2, activation='Leaky_Relu')
 
         with tf.variable_scope('conv_5'):
-            net = conv(net, 256, [4, 4], stride=1, activation='Leaky_Relu')
+            net = conv(net, 512, [4, 4], stride=1, activation='Leaky_Relu')
 
         with tf.variable_scope('conv_6'):
-            net = conv(net, 64, [4, 4], stride=1, activation='Leaky_Relu')
-
-        with tf.variable_scope('conv_7'):
             net = slim.conv2d(net, 1, kernel_size=[4, 4], stride=1, padding='SAME', activation_fn=None)
 
     return net
