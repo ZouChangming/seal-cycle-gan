@@ -7,7 +7,7 @@ import tensorflow.contrib.layers as layers
 def Leaky_Relu(x):
     return tf.maximum(x, 0.2*x)
 
-def conv(x, num_channel, kernel_size, stride=1, keep_prob=1.0, padding='SAME', activation='relu'):
+def conv(x, num_channel, kernel_size, stride=1, keep_prob=1.0, padding='SAME', activation='Leaky_Relu'):
     net = slim.conv2d(x, num_channel, kernel_size=kernel_size, stride=stride, padding=padding, activation_fn=None)
     net = layers.batch_norm(net, is_training=False, trainable=False)
     if activation == 'Leaky_Relu':
@@ -17,7 +17,7 @@ def conv(x, num_channel, kernel_size, stride=1, keep_prob=1.0, padding='SAME', a
     net = tf.nn.dropout(net, keep_prob)
     return net
 
-def deconv(x, num_channel, kernel_size, stride=2, padding='SAME', activation='relu'):
+def deconv(x, num_channel, kernel_size, stride=2, padding='SAME', activation='Leaky_Relu'):
     net = slim.conv2d_transpose(x, num_outputs=num_channel, kernel_size=kernel_size, stride=stride,
                                 padding=padding, activation_fn=None)
     net = layers.batch_norm(net, is_training=False, trainable=False)
@@ -214,6 +214,18 @@ def Generative2(input, name, reuse=False):
             net_2 = net
             net = conv(net, 256, [3, 3], stride=2)
 
+        with tf.variable_scope('conv_4'):
+            net_3 = net
+            net = conv(net, 256, [3, 3], stride=2)
+
+        with tf.variable_scope('conv_5'):
+            net_4 = net
+            net = conv(net, 256, [3, 3], stride=2)
+
+        with tf.variable_scope('conv_6'):
+            net_5 = net
+            net = conv(net, 256, [3, 3], stride=2)
+
         with tf.variable_scope('refine'):
             with tf.variable_scope('res_block_1'):
                 net = residule_block(net, 256)
@@ -225,30 +237,42 @@ def Generative2(input, name, reuse=False):
                 net = residule_block(net, 256)
             with tf.variable_scope('res_block_5'):
                 net = residule_block(net, 256)
-            with tf.variable_scope('res_block_6'):
-                net = residule_block(net, 256)
-            with tf.variable_scope('res_block_7'):
-                net = residule_block(net, 256)
-            with tf.variable_scope('res_block_8'):
-                net = residule_block(net, 256)
-            with tf.variable_scope('res_block_9'):
-                net = residule_block(net, 256)
-            with tf.variable_scope('res_block_10'):
-                net = residule_block(net, 256)
-            with tf.variable_scope('res_block_11'):
-                net = residule_block(net, 256)
+            # with tf.variable_scope('res_block_6'):
+            #     net = residule_block(net, 256)
+            # with tf.variable_scope('res_block_7'):
+            #     net = residule_block(net, 256)
+            # with tf.variable_scope('res_block_8'):
+            #     net = residule_block(net, 256)
+            # with tf.variable_scope('res_block_9'):
+            #     net = residule_block(net, 256)
+            # with tf.variable_scope('res_block_10'):
+            #     net = residule_block(net, 256)
+            # with tf.variable_scope('res_block_11'):
+            #     net = residule_block(net, 256)
 
         with tf.variable_scope('deconv_1'):
+            net = deconv(net, 256, [3, 3])
+            net = tf.concat([net, net_5], 3)
+
+        with tf.variable_scope('deconv_2'):
+            net = deconv(net, 256, [3, 3])
+            net = tf.concat([net, net_4], 3)
+
+        with tf.variable_scope('deconv_3'):
+            net = deconv(net, 256, [3, 3])
+            net = tf.concat([net, net_3], 3)
+
+        with tf.variable_scope('deconv_4'):
             net = deconv(net, 128, [3, 3])
             net = tf.concat([net, net_2], 3)
             # net = net + net_2
 
-        with tf.variable_scope('deconv_2'):
+        with tf.variable_scope('deconv_5'):
             net = deconv(net, 64, [3, 3])
             net = tf.concat([net, net_1], 3)
             # net = net + net_1
 
-        with tf.variable_scope('conv_5'):
+        with tf.variable_scope('conv_7'):
             net = tf.pad(net, [[0, 0], [3, 3], [3, 3], [0, 0]], 'REFLECT')
             net = slim.conv2d(net, 3, kernel_size=[7, 7], stride=1, padding='VALID', activation_fn=tf.nn.tanh)
 
