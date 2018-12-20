@@ -241,10 +241,12 @@ def Generative2(input, name, reuse=False):
         with tf.variable_scope('deconv_1'):
             net = deconv(net, 128, [3, 3])
             net = tf.concat([net, net_2], 3)
+            # net = net + net_2
 
         with tf.variable_scope('deconv_2'):
             net = deconv(net, 64, [3, 3])
             net = tf.concat([net, net_1], 3)
+            # net = net + net_1
 
         with tf.variable_scope('conv_5'):
             net = tf.pad(net, [[0, 0], [3, 3], [3, 3], [0, 0]], 'REFLECT')

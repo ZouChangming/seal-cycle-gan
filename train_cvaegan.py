@@ -5,10 +5,10 @@ import tensorflow as tf
 from models import Generative, Discriminative, Encoder, Classifier, Generative2, Discriminative2, Classifier2
 import tools
 
-learning_rate = 0.00002
-batch_size = 8
+learning_rate = 0.00001
+batch_size = 4
 model_path = './data/model/GAN'
-epoch = 20000
+epoch = 3000
 iter = 10
 
 def train():
@@ -40,17 +40,17 @@ def train():
 
     loss_D = tf.reduce_mean(tools.get_LS_loss(tf.zeros_like(D_logits_real_seal), D_logits_real_seal) + \
             tools.get_LS_loss(tf.zeros_like(D_logits_real_noseal), D_logits_real_noseal) + \
-            tools.get_LS_loss(tf.ones_like(D_logits_fake_noseal), D_logits_fake_noseal)  +\
-            tools.get_LS_loss(tf.ones_like(D_logits_fake_seal), D_logits_fake_seal))
-            # 0.1*tools.get_LS_loss(tf.ones_like(D_logits_seal2noseal), D_logits_seal2noseal) +\
-            # 0.1*tools.get_LS_loss(tf.ones_like(D_logits_noseal2seal), D_logits_noseal2seal)
+            1*tools.get_LS_loss(tf.ones_like(D_logits_fake_noseal), D_logits_fake_noseal)  +\
+            1*tools.get_LS_loss(tf.ones_like(D_logits_fake_seal), D_logits_fake_seal)) +\
+            1*tools.get_LS_loss(tf.ones_like(D_logits_seal2noseal), D_logits_seal2noseal) +\
+            1*tools.get_LS_loss(tf.ones_like(D_logits_noseal2seal), D_logits_noseal2seal)
 
     loss_C = tf.reduce_mean(tools.get_LS_loss(tf.zeros_like(C_logits_real_seal), C_logits_real_seal) + \
                 tools.get_LS_loss(tf.ones_like(C_logits_real_noseal), C_logits_real_noseal) +\
-                tools.get_LS_loss(tf.zeros_like(C_logits_fake_noseal), C_logits_fake_noseal) +\
-                tools.get_LS_loss(tf.ones_like(C_logits_fake_seal), C_logits_fake_seal))
-                # 0.1*tools.get_LS_loss(tf.zeros_like(C_logits_seal2noseal), C_logits_seal2noseal) +\
-                # 0.1*tools.get_LS_loss(tf.ones_like(C_logits_noseal2seal), C_logits_noseal2seal)
+                1*tools.get_LS_loss(tf.zeros_like(C_logits_fake_noseal), C_logits_fake_noseal) +\
+                1*tools.get_LS_loss(tf.ones_like(C_logits_fake_seal), C_logits_fake_seal)) +\
+                1*tools.get_LS_loss(tf.zeros_like(C_logits_seal2noseal), C_logits_seal2noseal) +\
+                1*tools.get_LS_loss(tf.ones_like(C_logits_noseal2seal), C_logits_noseal2seal)
 
     loss_GD_seal2noseal = tools.get_LS_loss(tf.zeros_like(D_logits_fake_noseal), D_logits_fake_noseal)
     loss_GD_noseal2seal = tools.get_LS_loss(tf.zeros_like(D_logits_fake_seal), D_logits_fake_seal)
@@ -59,8 +59,8 @@ def train():
 
     loss_GC_noseal2seal = tools.get_LS_loss(tf.zeros_like(C_logits_fake_seal), C_logits_fake_seal)
 
-    loss_G = tools.get_loss_G(seal, fake_noseal2seal) + tools.get_loss_G(noseal, fake_seal2noseal) +\
-             0.1*tools.get_loss_G(seal, fake_seal2noseal) + 0.1*tools.get_loss_G(noseal, fake_noseal2seal)
+    loss_G = 0.6*tools.get_loss_G(seal, fake_noseal2seal) + 0.6*tools.get_loss_G(noseal, fake_seal2noseal) +\
+             0.4*tools.get_loss_G(seal, fake_seal2noseal) + 0.4*tools.get_loss_G(noseal, fake_noseal2seal)
 
     # loss_KL = tools.get_loss_KL(z)
 
@@ -78,7 +78,7 @@ def train():
 
     var_D = [var for var in all_var if var.name.startswith('Discriminative')]
 
-    lr = tf.train.exponential_decay(learning_rate=learning_rate, global_step=global_step, decay_rate=0.8,
+    lr = tf.train.exponential_decay(learning_rate=learning_rate, global_step=global_step, decay_rate=0.5,
                                     decay_steps=10000, staircase=True)
 
     optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta1=0.5)
@@ -90,7 +90,7 @@ def train():
 
     opt_G_noseal2seal = optimizer.minimize(loss_GC_noseal2seal + loss_GD_noseal2seal, var_list=var_G_noseal2seal)
 
-    opt_G = optimizer.minimize(30*loss_G, var_list=var_G)
+    opt_G = optimizer.minimize(50*loss_G, var_list=var_G)
 
     opt_D = optimizer.minimize(loss_D, var_list=var_D)
 
@@ -101,7 +101,7 @@ def train():
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
-        saver = tf.train.Saver(max_to_keep=1)
+        saver = tf.train.Saver(max_to_keep=0)
         ckpt = tf.train.get_checkpoint_state(model_path)
         if ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)
@@ -134,7 +134,8 @@ def train():
                   str(l_c2) + ';L_D_s2n=' + str(l_d1) + ';L_D_n2s=' + str(l_d2) + ';L_D=' + str(l_d) + ';acc=' + str(a) +\
                   ';lr=' + str(l)
             if i % 10 == 0:
-                saver.save(sess, os.path.join(model_path, 'model.ckpt'))
+                if i%100 == 0:
+                    saver.save(sess, os.path.join(model_path, 'model.ckpt'), global_step=i)
                 seal_img, h, w = tools.get_test()
                 fake_img = sess.run(fake_noseal, feed_dict={seal:seal_img})
                 tools.save(seal_img, fake_img[0, :, : ,:], i, h, w)
