@@ -12,7 +12,7 @@ epoch = 2000
 iter = 10
 
 def train():
-    input = tf.placeholder(shape=(None, 224, 224, 3), dtype=tf.float32)
+    input = tf.placeholder(shape=(None, 256, 256, 3), dtype=tf.float32)
     label = tf.placeholder(shape=(None, 2), dtype=tf.float32)
     global_step = tf.Variable(0)
 

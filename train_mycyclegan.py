@@ -12,8 +12,8 @@ epoch = 3000
 iter = 10
 
 def train():
-    seal = tf.placeholder(shape=(None, 224, 224, 3), dtype=tf.float32)
-    noseal = tf.placeholder(shape=(None, 224, 224, 3), dtype=tf.float32)
+    seal = tf.placeholder(shape=(None, 256, 256, 3), dtype=tf.float32)
+    noseal = tf.placeholder(shape=(None, 256, 256, 3), dtype=tf.float32)
     seal_label = tf.placeholder(shape=(None, 2), dtype=tf.float32)
     noseal_label = tf.placeholder(shape=(None, 2), dtype=tf.float32)
     global_step = tf.Variable(0)
@@ -60,7 +60,7 @@ def train():
     loss_GC_noseal2seal = tools.get_LS_loss(tf.zeros_like(C_logits_fake_seal), C_logits_fake_seal)
 
     loss_G = 0.9*tools.get_loss_G(seal, fake_noseal2seal) + 0.9*tools.get_loss_G(noseal, fake_seal2noseal) +\
-             0.1*tools.get_loss_G(seal, fake_seal2noseal) + 0.1*tools.get_loss_G(noseal, fake_noseal2seal)
+             0.1*tools.get_loss_G(seal, fake_noseal) + 0.1*tools.get_loss_G(noseal, fake_seal)
 
     # loss_KL = tools.get_loss_KL(z)
 
@@ -90,7 +90,7 @@ def train():
 
     opt_G_noseal2seal = optimizer.minimize(loss_GC_noseal2seal + loss_GD_noseal2seal, var_list=var_G_noseal2seal)
 
-    opt_G = optimizer.minimize(10*loss_G, var_list=var_G)
+    opt_G = optimizer.minimize(20*loss_G, var_list=var_G)
 
     opt_D = optimizer.minimize(loss_D, var_list=var_D)
 

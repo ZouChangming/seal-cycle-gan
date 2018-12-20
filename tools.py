@@ -9,7 +9,7 @@ import tensorflow.contrib.slim as slim
 
 def get_classifier_pic(batch_size, seed):
     random.seed(seed)
-    image = np.zeros(shape=(batch_size, 224, 224, 3), dtype=np.float32)
+    image = np.zeros(shape=(batch_size, 256, 256, 3), dtype=np.float32)
     label = np.zeros(shape=(batch_size, 2), dtype=np.float32)
     for i in range(batch_size):
         flag = random.choice([0, 1])
@@ -18,7 +18,7 @@ def get_classifier_pic(batch_size, seed):
             img_list = os.listdir(path)
             id = random.randint(0, len(img_list)-1)
             img = cv2.imread(os.path.join(path, img_list[id]))
-            img = cv2.resize(img, (224, 224))
+            img = cv2.resize(img, (256, 256))
             image[i, :, :, :] = img / 255.0 * 2 - 1.0
             label[i, 0] = 1
         else:
@@ -26,7 +26,7 @@ def get_classifier_pic(batch_size, seed):
             img_list = os.listdir(path)
             id = random.randint(0, len(img_list)-1)
             img = cv2.imread(os.path.join(path, img_list[id]))
-            img = cv2.resize(img, (224, 224))
+            img = cv2.resize(img, (256, 256))
             image[i, :, :, :] = img / 255.0 * 2 - 1.0
             label[i, 1] = 1
     return image, label
@@ -60,49 +60,49 @@ def get_covariance(vector):
 
 def get_seal_set(batch_size, seed):
     random.seed(seed)
-    image = np.zeros(shape=(batch_size, 224, 224, 3), dtype=np.float32)
+    image = np.zeros(shape=(batch_size, 256, 256, 3), dtype=np.float32)
     label = np.zeros(shape=(batch_size, 2), dtype=np.float32)
     path = './data/source/seal'
     img_list = os.listdir(path)
     for i in range(batch_size):
         id = random.randint(0, len(img_list)-1)
         img = cv2.imread(os.path.join(path, img_list[id]))
-        img = cv2.resize(img, (224, 224))
+        img = cv2.resize(img, (256, 256))
         image[i, :, :, :] = img / 255.0 * 2 - 1.0
         label[i, 0] = 1
     return image, label
 
 def get_noseal_set(batch_size, seed):
     random.seed(seed)
-    image = np.zeros(shape=(batch_size, 224, 224, 3), dtype=np.float32)
+    image = np.zeros(shape=(batch_size, 256, 256, 3), dtype=np.float32)
     label = np.zeros(shape=(batch_size, 2), dtype=np.float32)
     path = './data/source/noseal'
     img_list = os.listdir(path)
     for i in range(batch_size):
         id = random.randint(0, len(img_list) - 1)
         img = cv2.imread(os.path.join(path, img_list[id]))
-        img = cv2.resize(img, (224, 224))
+        img = cv2.resize(img, (256, 256))
         image[i, :, :, :] = img / 255.0 * 2 - 1.0
         label[i, 1] = 1
     return image, label
 
 def get_test():
-    image = np.zeros(shape=(1, 224, 224, 3), dtype=np.float32)
+    image = np.zeros(shape=(1, 256, 256, 3), dtype=np.float32)
     path = './data/source/test'
     img_list = os.listdir(path)
     id = random.randint(0, len(img_list)-1)
     img = cv2.imread(os.path.join(path, img_list[id]))
     h, w, _ = np.shape(img)
-    img = cv2.resize(img, (224, 224))
+    img = cv2.resize(img, (256, 256))
     image[0, :, :, :] = img / 255.0 * 2 - 1.0
     return image, h, w
 
 def save(ori_img, image, epoch, h, w):
     img = np.zeros(shape=(h, 2*w, 3), dtype=np.float32)
-    image = np.reshape(image, [224, 224, 3])
+    image = np.reshape(image, [256, 256, 3])
     image = (image + 1.0) / 2.0 * 255.0
     image = cv2.resize(image, (w, h))
-    ori_img = np.reshape(ori_img, [224, 224, 3])
+    ori_img = np.reshape(ori_img, [256, 256, 3])
     ori_img = (ori_img + 1.0) / 2.0 * 255.0
     ori_img = cv2.resize(ori_img, (w, h))
     img[:, 0:w, :] = ori_img
@@ -116,13 +116,13 @@ def check_source():
     for name in img_list:
         print os.path.join(path, name)
         img = cv2.imread(os.path.join(path, name))
-        img = cv2.resize(img, (224, 224))
+        img = cv2.resize(img, (256, 256))
     path = './data/source/seal'
     img_list = os.listdir(path)
     for name in img_list:
         print os.path.join(path, name)
         img = cv2.imread(os.path.join(path, name))
-        img = cv2.resize(img, (224, 224))
+        img = cv2.resize(img, (256, 256))
 
 if __name__ == '__main__':
     check_source()
